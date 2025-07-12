@@ -24,11 +24,13 @@ from yolox.utils import (
     postprocess,
     synchronize,
     time_synchronized,
-    xyxy2xywh
+    xyxy2xywh,
 )
 
 
-def per_class_AR_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "AR"], colums=6):
+def per_class_AR_table(
+    coco_eval, class_names=COCO_CLASSES, headers=["class", "AR"], colums=6
+):
     per_class_AR = {}
     recalls = coco_eval.eval["recall"]
     # dimension of recalls: [TxKxAxM]
@@ -43,15 +45,23 @@ def per_class_AR_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "A
 
     num_cols = min(colums, len(per_class_AR) * len(headers))
     result_pair = [x for pair in per_class_AR.items() for x in pair]
-    row_pair = itertools.zip_longest(*[result_pair[i::num_cols] for i in range(num_cols)])
+    row_pair = itertools.zip_longest(
+        *[result_pair[i::num_cols] for i in range(num_cols)]
+    )
     table_headers = headers * (num_cols // len(headers))
     table = tabulate(
-        row_pair, tablefmt="pipe", floatfmt=".3f", headers=table_headers, numalign="left",
+        row_pair,
+        tablefmt="pipe",
+        floatfmt=".3f",
+        headers=table_headers,
+        numalign="left",
     )
     return table
 
 
-def per_class_AP_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "AP"], colums=6):
+def per_class_AP_table(
+    coco_eval, class_names=COCO_CLASSES, headers=["class", "AP"], colums=6
+):
     per_class_AP = {}
     precisions = coco_eval.eval["precision"]
     # dimension of precisions: [TxRxKxAxM]
@@ -68,10 +78,16 @@ def per_class_AP_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "A
 
     num_cols = min(colums, len(per_class_AP) * len(headers))
     result_pair = [x for pair in per_class_AP.items() for x in pair]
-    row_pair = itertools.zip_longest(*[result_pair[i::num_cols] for i in range(num_cols)])
+    row_pair = itertools.zip_longest(
+        *[result_pair[i::num_cols] for i in range(num_cols)]
+    )
     table_headers = headers * (num_cols // len(headers))
     table = tabulate(
-        row_pair, tablefmt="pipe", floatfmt=".3f", headers=table_headers, numalign="left",
+        row_pair,
+        tablefmt="pipe",
+        floatfmt=".3f",
+        headers=table_headers,
+        numalign="left",
     )
     return table
 
@@ -114,8 +130,14 @@ class COCOEvaluator:
         self.per_class_AR = per_class_AR
 
     def evaluate(
-        self, model, distributed=False, half=False, trt_file=None,
-        decoder=None, test_size=None, return_outputs=False
+        self,
+        model,
+        distributed=False,
+        half=False,
+        trt_file=None,
+        decoder=None,
+        test_size=None,
+        return_outputs=False,
     ):
         """
         COCO average precision (AP) Evaluation. Iterate inference on the test dataset
@@ -182,7 +204,8 @@ class COCOEvaluator:
                     nms_time += nms_end - infer_end
 
             data_list_elem, image_wise_data = self.convert_to_coco_format(
-                outputs, info_imgs, ids, return_outputs=True)
+                outputs, info_imgs, ids, return_outputs=True
+            )
             data_list.extend(data_list_elem)
             output_data.update(image_wise_data)
 
@@ -207,7 +230,7 @@ class COCOEvaluator:
     def convert_to_coco_format(self, outputs, info_imgs, ids, return_outputs=False):
         data_list = []
         image_wise_data = defaultdict(dict)
-        for (output, img_h, img_w, img_id) in zip(
+        for output, img_h, img_w, img_id in zip(
             outputs, info_imgs[0], info_imgs[1], ids
         ):
             if output is None:
@@ -224,16 +247,18 @@ class COCOEvaluator:
             cls = output[:, 6]
             scores = output[:, 4] * output[:, 5]
 
-            image_wise_data.update({
-                int(img_id): {
-                    "bboxes": [box.numpy().tolist() for box in bboxes],
-                    "scores": [score.numpy().item() for score in scores],
-                    "categories": [
-                        self.dataloader.dataset.class_ids[int(cls[ind])]
-                        for ind in range(bboxes.shape[0])
-                    ],
+            image_wise_data.update(
+                {
+                    int(img_id): {
+                        "bboxes": [box.numpy().tolist() for box in bboxes],
+                        "scores": [score.numpy().item() for score in scores],
+                        "categories": [
+                            self.dataloader.dataset.class_ids[int(cls[ind])]
+                            for ind in range(bboxes.shape[0])
+                        ],
+                    }
                 }
-            })
+            )
 
             bboxes = xyxy2xywh(bboxes)
 
@@ -289,8 +314,10 @@ class COCOEvaluator:
             else:
                 _, tmp = tempfile.mkstemp()
                 json.dump(data_dict, open(tmp, "w"))
+                print("Dumped results to {}".format(tmp))
                 cocoDt = cocoGt.loadRes(tmp)
             from pycocotools.cocoeval import COCOeval
+
             logger.warning("Force use standard COCOeval (no JIT).")
 
             cocoEval = COCOeval(cocoGt, cocoDt, annType[1])
@@ -301,7 +328,7 @@ class COCOEvaluator:
                 cocoEval.summarize()
             info += redirect_string.getvalue()
             cat_ids = list(cocoGt.cats.keys())
-            cat_names = [cocoGt.cats[catId]['name'] for catId in sorted(cat_ids)]
+            cat_names = [cocoGt.cats[catId]["name"] for catId in sorted(cat_ids)]
             if self.per_class_AP:
                 AP_table = per_class_AP_table(cocoEval, class_names=cat_names)
                 info += "per class AP:\n" + AP_table + "\n"

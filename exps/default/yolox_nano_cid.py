@@ -11,7 +11,7 @@ class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
 
-        self.exp_name = "yolox_nano_passport_500_epoch"
+        self.exp_name = "yolox_nano_cid_100_epoch"
         # Optional config
         self.occupy = False
 
@@ -20,8 +20,8 @@ class Exp(MyExp):
         self.width = 0.25
 
         # Image size
-        self.input_size = (640, 640)
-        self.test_size = (640, 640)
+        self.input_size = (320, 320)
+        self.test_size = (320, 320)
         self.random_size = (10, 20)
 
         # Augmentation
@@ -30,10 +30,11 @@ class Exp(MyExp):
         self.enable_mixup = False
 
         # Dataset config
-        self.class_names = ("License_Plate", "License_Plate")
+        self.class_names = ("front", "back")
         self.data_dir = "datasets/your_dataset"
         self.train_ann = "instances_train.json"
         self.val_ann = "instances_val.json"
+        self.test_ann = "instances_test.json"
         self.num_classes = 2
 
         # Pre-train config
@@ -49,7 +50,7 @@ class Exp(MyExp):
         self.enable_mixup = True
 
         # Training config
-        self.max_epoch = 1000
+        self.max_epoch = 100
         self.no_aug_epochs = 10
         self.eval_interval = 5
         self.print_interval = 20
