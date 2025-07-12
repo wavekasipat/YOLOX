@@ -159,8 +159,11 @@ class Predictor(object):
             if self.decoder is not None:
                 outputs = self.decoder(outputs, dtype=outputs.type())
             outputs = postprocess(
-                outputs, self.num_classes, self.confthre,
-                self.nmsthre, class_agnostic=True
+                outputs,
+                self.num_classes,
+                self.confthre,
+                self.nmsthre,
+                class_agnostic=True,
             )
             logger.info("Infer time: {:.4f}s".format(time.time() - t0))
         return outputs, img_info
@@ -173,12 +176,17 @@ class Predictor(object):
         output = output.cpu()
 
         bboxes = output[:, 0:4]
-
         # preprocessing: resize
         bboxes /= ratio
 
         cls = output[:, 6]
         scores = output[:, 4] * output[:, 5]
+
+        # Filter out invalid class indices
+        valid_mask = (cls >= 0) & (cls < len(self.cls_names))
+        bboxes = bboxes[valid_mask]
+        cls = cls[valid_mask]
+        scores = scores[valid_mask]
 
         vis_res = vis(img, bboxes, scores, cls, cls_conf, self.cls_names)
         return vis_res
@@ -281,6 +289,7 @@ def main(exp, args):
             ckpt_file = args.ckpt
         logger.info("loading checkpoint")
         ckpt = torch.load(ckpt_file, map_location="cpu")
+        print("ckpt keys:", ckpt.keys())
         # load the model state dict
         model.load_state_dict(ckpt["model"])
         logger.info("loaded checkpoint done.")
@@ -303,8 +312,14 @@ def main(exp, args):
         decoder = None
 
     predictor = Predictor(
-        model, exp, COCO_CLASSES, trt_file, decoder,
-        args.device, args.fp16, args.legacy,
+        model,
+        exp,
+        COCO_CLASSES,
+        trt_file,
+        decoder,
+        args.device,
+        args.fp16,
+        args.legacy,
     )
     current_time = time.localtime()
     if args.demo == "image":

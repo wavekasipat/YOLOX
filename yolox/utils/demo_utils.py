@@ -8,7 +8,12 @@ import cv2
 import numpy as np
 
 __all__ = [
-    "mkdir", "nms", "multiclass_nms", "demo_postprocess", "random_color", "visualize_assign"
+    "mkdir",
+    "nms",
+    "multiclass_nms",
+    "demo_postprocess",
+    "random_color",
+    "visualize_assign",
 ]
 
 
@@ -34,8 +39,13 @@ def visualize_assign(img, boxes, coords, match_results, save_name=None) -> np.nd
             # unmatched boxes are red
             color = (0, 0, 255)
             cv2.putText(
-                img, "unmatched", (int(x1), int(y1) - 5),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 1
+                img,
+                "unmatched",
+                (int(x1), int(y1) - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                1,
             )
         else:
             for coord in assign_coords:
@@ -119,16 +129,25 @@ def multiclass_nms_class_aware(boxes, scores, nms_thr, score_thr):
 
 def multiclass_nms_class_agnostic(boxes, scores, nms_thr, score_thr):
     """Multiclass NMS implemented in Numpy. Class-agnostic version."""
+    print("Multiclass NMS Class-Agnostic")
     cls_inds = scores.argmax(1)
     cls_scores = scores[np.arange(len(cls_inds)), cls_inds]
 
+    print("Class indices shape:", cls_inds.shape)
+    print("Class scores shape:", cls_scores.shape)
+    print("score_thr:", score_thr)
+
     valid_score_mask = cls_scores > score_thr
+    print("Valid score mask sum:", valid_score_mask.sum())
+    print("Valid score mask:", valid_score_mask)
     if valid_score_mask.sum() == 0:
         return None
     valid_scores = cls_scores[valid_score_mask]
+    print("Valid scores:", valid_scores)
     valid_boxes = boxes[valid_score_mask]
     valid_cls_inds = cls_inds[valid_score_mask]
     keep = nms(valid_boxes, valid_scores, nms_thr)
+    print("Keep indices:", keep)
     if keep:
         dets = np.concatenate(
             [valid_boxes[keep], valid_scores[keep, None], valid_cls_inds[keep, None]], 1
@@ -137,12 +156,15 @@ def multiclass_nms_class_agnostic(boxes, scores, nms_thr, score_thr):
 
 
 def demo_postprocess(outputs, img_size, p6=False):
+    print("Postprocessing outputs with img_size:", img_size, "and p6:", p6)
     grids = []
     expanded_strides = []
     strides = [8, 16, 32] if not p6 else [8, 16, 32, 64]
 
     hsizes = [img_size[0] // stride for stride in strides]
     wsizes = [img_size[1] // stride for stride in strides]
+    print("HSizes:", hsizes)
+    print("WSizes:", wsizes)
 
     for hsize, wsize, stride in zip(hsizes, wsizes, strides):
         xv, yv = np.meshgrid(np.arange(wsize), np.arange(hsize))
@@ -152,7 +174,11 @@ def demo_postprocess(outputs, img_size, p6=False):
         expanded_strides.append(np.full((*shape, 1), stride))
 
     grids = np.concatenate(grids, 1)
+    print("Grids shape:", grids.shape)
+    print("Grids sample:", grids[0, 0])
     expanded_strides = np.concatenate(expanded_strides, 1)
+    print("Expanded strides shape:", expanded_strides.shape)
+    print("Expanded strides sample:", expanded_strides[0, 0])
     outputs[..., :2] = (outputs[..., :2] + grids) * expanded_strides
     outputs[..., 2:4] = np.exp(outputs[..., 2:4]) * expanded_strides
 

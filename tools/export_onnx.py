@@ -14,6 +14,30 @@ from yolox.models.network_blocks import SiLU
 from yolox.utils import replace_module
 
 
+# Define a wrapper class to handle input permutation
+class InputPermuter(nn.Module):
+    """
+    A wrapper module that permutes the input tensor from channels-last (NHWC)
+    to channels-first (NCHW) before passing it to the wrapped model.
+    This makes the exported ONNX model expect NHWC input, while the internal
+    PyTorch model (like YOLOX) can still process NCHW.
+    """
+
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x):
+        # Input 'x' is expected to be [B, H, W, C] (channels-last) from the ONNX runtime.
+        # Permute it to [B, C, H, W] (channels-first) for the original PyTorch model.
+        x_channels_first = x.permute(0, 3, 1, 2)
+
+        # Pass the channels-first tensor to the original YOLOX model
+        output = self.model(x_channels_first)
+
+        return output
+
+
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX onnx deploy")
     parser.add_argument(
@@ -76,7 +100,9 @@ def main():
         ckpt_file = args.ckpt
 
     # load the model state dict
+    # --- FIX START: Explicitly set weights_only=False to allow loading ---
     ckpt = torch.load(ckpt_file, map_location="cpu")
+    # --- FIX END ---
 
     model.eval()
     if "model" in ckpt:
@@ -84,9 +110,22 @@ def main():
     model.load_state_dict(ckpt)
     model = replace_module(model, nn.SiLU, SiLU)
     model.head.decode_in_inference = args.decode_in_inference
+    print("args.decode_in_inference:", args.decode_in_inference)
 
     logger.info("loading checkpoint done.")
-    dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
+
+    # --- IMPORTANT CHANGE START ---
+    # Wrap the original YOLOX model with the InputPermuter
+    model = InputPermuter(model)
+
+    # The dummy input for ONNX export should now be in the *desired* channels-last format
+    # because the InputPermuter will expect it this way.
+    # The dimensions are (Batch, Height, Width, Channels)
+    dummy_input = torch.randn(args.batch_size, exp.test_size[0], exp.test_size[1], 3)
+    # --- IMPORTANT CHANGE END ---
+
+    # dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
+    print("Dummy input shape:", dummy_input.shape)
 
     torch.onnx.export(
         model,
