@@ -116,15 +116,15 @@ def main():
 
     # --- IMPORTANT CHANGE START ---
     # Wrap the original YOLOX model with the InputPermuter
-    model = InputPermuter(model)
+    # model = InputPermuter(model)
 
     # The dummy input for ONNX export should now be in the *desired* channels-last format
     # because the InputPermuter will expect it this way.
     # The dimensions are (Batch, Height, Width, Channels)
-    dummy_input = torch.randn(args.batch_size, exp.test_size[0], exp.test_size[1], 3)
+    # dummy_input = torch.randn(args.batch_size, exp.test_size[0], exp.test_size[1], 3)
     # --- IMPORTANT CHANGE END ---
 
-    # dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
+    dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
     print("Dummy input shape:", dummy_input.shape)
 
     torch.onnx.export(

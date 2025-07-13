@@ -61,9 +61,11 @@ if __name__ == "__main__":
     origin_img = cv2.imread(args.image_path)
     print("Original image shape:", origin_img.shape)
     print("Original image sample:", origin_img[0, 0])
-    img, ratio = preprocess(origin_img, input_shape, swap=(0, 1, 2))
+    img, ratio = preprocess(origin_img, input_shape, swap=(2, 0, 1))
     print("Input image shape:", img.shape)
-    print("Input image sample:", img[0, 0])
+    print("Input image sample:", img[0, 0, 0])
+    print("Input image sample:", img[1, 0, 0])
+    print("Input image sample:", img[2, 0, 0])
     print("Input image ratio:", ratio)
 
     session = onnxruntime.InferenceSession(args.model)
